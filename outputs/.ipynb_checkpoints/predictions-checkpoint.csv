@@ -1,0 +1,2 @@
+CustomerID,Age,Gender,Tenure,MonthlyCharges,TotalCharges,ContractType,InternetService,TechSupport,PaymentMethod,MonthlyUsageGB,NumComplaints,Prediction
+2001,35,1,12,75.5,906.0,1,1,1,2,120,1,0
