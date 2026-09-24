@@ -15,6 +15,12 @@ from sklearn.metrics import (
 import joblib
 model = joblib.load("models/customer_churn_model.pkl")
 import os
+# ============================================================
+# SESSION STATE
+# ============================================================
+
+if "uploaded_dataset" not in st.session_state:
+    st.session_state.uploaded_dataset = None
 # ---------------- PAGE CONFIG ---------------- #
 
 st.set_page_config(
@@ -86,6 +92,8 @@ elif menu == "📂 Upload Dataset":
 
         try:
             df = pd.read_csv(uploaded_file)
+            # Store uploaded dataset for other pages
+            st.session_state.uploaded_dataset = df
 
             st.success("✅ Dataset uploaded successfully!")
 
@@ -401,9 +409,18 @@ elif menu == "🤖 Machine Learning":
             
             os.makedirs("outputs", exist_ok=True)
             output_file = "outputs/predictions.csv"
-            new_customer.to_csv(output_file, index=False)
-            
-            st.success("Prediction Saved Successfully")
+            if "prediction_history" in st.session_state:
+                prediction_history = st.session_state["prediction_history"]
+
+                if not prediction_history.empty:
+                    prediction_history.to_csv(
+                        output_file,
+                        index=False
+                    )
+
+                    st.success(
+                        "Prediction history saved successfully."
+                    )
 
 
 # ---------------- CUSTOMER PREDICTION ---------------- #
@@ -542,9 +559,176 @@ elif menu == "🔮 Customer Prediction":
 
 elif menu == "📑 Reports":
 
-    st.title("Reports")
+    st.title("📑 Customer Churn Reports")
 
-    st.info("Upload a dataset to generate reports.")
+    # Get uploaded dataset from session state
+    df = st.session_state.uploaded_dataset
+
+    if df is None:
+
+        st.info(
+            "📂 Please upload a customer dataset from the "
+            "Upload Dataset page to generate reports."
+        )
+
+    else:
+
+        st.success("✅ Report generated from the uploaded dataset.")
+
+        # ============================================================
+        # DATASET OVERVIEW
+        # ============================================================
+
+        st.subheader("📊 Dataset Overview")
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        col1.metric(
+            "Total Customers",
+            df.shape[0]
+        )
+
+        col2.metric(
+            "Total Features",
+            df.shape[1]
+        )
+
+        col3.metric(
+            "Missing Values",
+            df.isnull().sum().sum()
+        )
+
+        col4.metric(
+            "Duplicate Records",
+            df.duplicated().sum()
+        )
+
+        st.markdown("---")
+
+        # ============================================================
+        # CHURN DISTRIBUTION
+        # ============================================================
+
+        if "Churn" in df.columns:
+
+            st.subheader("📈 Customer Churn Distribution")
+
+            churn_counts = (
+                df["Churn"]
+                .value_counts()
+                .reset_index()
+            )
+
+            churn_counts.columns = [
+                "Churn",
+                "Customers"
+            ]
+
+            fig = px.pie(
+                churn_counts,
+                names="Churn",
+                values="Customers",
+                title="Customer Churn Distribution",
+                hole=0.4
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
+
+            st.dataframe(
+                churn_counts,
+                use_container_width=True
+            )
+
+        # ============================================================
+        # NUMERIC FEATURES
+        # ============================================================
+
+        st.subheader("📊 Numeric Feature Summary")
+
+        numeric_columns = df.select_dtypes(
+            include="number"
+        ).columns
+
+        if len(numeric_columns) > 0:
+
+            numeric_summary = df[numeric_columns].describe().T
+
+            numeric_summary = numeric_summary.reset_index()
+
+            numeric_summary.rename(
+                columns={
+                    "index": "Feature"
+                },
+                inplace=True
+            )
+
+            st.dataframe(
+                numeric_summary,
+                use_container_width=True
+            )
+
+        else:
+
+            st.info("No numeric features found in the dataset.")
+
+        # ============================================================
+        # TENURE ANALYSIS
+        # ============================================================
+
+        if "Tenure" in df.columns:
+
+            st.subheader("📅 Customer Tenure Analysis")
+
+            fig = px.histogram(
+                df,
+                x="Tenure",
+                nbins=20,
+                title="Customer Tenure Distribution"
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
+
+        # ============================================================
+        # MONTHLY CHARGES ANALYSIS
+        # ============================================================
+
+        if "MonthlyCharges" in df.columns:
+
+            st.subheader("💰 Monthly Charges Analysis")
+
+            fig = px.histogram(
+                df,
+                x="MonthlyCharges",
+                nbins=20,
+                title="Monthly Charges Distribution"
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
+
+        # ============================================================
+        # DATASET PREVIEW
+        # ============================================================
+
+        st.subheader("🔍 Report Data Preview")
+
+        st.dataframe(
+            df.head(20),
+            use_container_width=True
+        )
+
+        st.success(
+            "📑 Customer churn report generated successfully."
+        )
+    
 # ---------------- ABOUT ---------------- #
 
 elif menu == "ℹ️ About":
